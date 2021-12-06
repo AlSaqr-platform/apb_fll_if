@@ -13,21 +13,20 @@ interface FLL_BUS (
     input logic clk_i
 );
     logic        req;
-    logic        wrn;
-    logic [1:0]  addr;
-    logic [31:0] wdata;
     logic        ack;
+    logic [3:0]  addr;
+    logic [31:0] wdata;
     logic [31:0] rdata;
-    logic        lock;
+    logic        web;
 
     modport out (
-        output req, wrn, addr, wdata,
-        input ack, rdata, lock
+        output req, web, addr, wdata,
+        input ack, rdata
     );
 
     modport in (
-        input req, wrn, addr, wdata,
-        output ack, rdata, lock
+        input req, web, addr, wdata,
+        output ack, rdata
     );
 
 endinterface
