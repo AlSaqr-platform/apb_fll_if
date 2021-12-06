@@ -8,7 +8,7 @@
 // CONDITIONS OF ANY KIND, either express or implied. See the License for the
 // specific language governing permissions and limitations under the License.
 
-`include "apb/asssign.svh"
+`include "apb/assign.svh"
 `include "apb/typedef.svh"
 
 // Author: Luca Valente <luca.valente@unibo.it>
@@ -43,21 +43,20 @@ module apb_fll_tb #(
    logic rst_n;
    logic ref_clk;
    
-    APB_BUS #(.ADDR_WIDTH(32), .DATA_WIDTH(32)) apb(
-                .clk_i(clk[0])
+    APB #(.ADDR_WIDTH(32), .DATA_WIDTH(32)) apb(
                 );
     FLL_BUS fll_intf(
                      .clk_i(clk[0])
                      );
-    APB_DV apb_dv(
+    APB_DV #(.ADDR_WIDTH(32), .DATA_WIDTH(32)) apb_dv(
                   .clk_i(clk[0])
                   );
    
     typedef apb_test::apb_driver #(.ADDR_WIDTH(32), .DATA_WIDTH(32), .TA(SYS_TA), .TT(SYS_TT)) apb_drv_t;
-    apb_drv_t apb_master_drv = new(apb_dv);
+    apb_drv_t apb_master = new(apb_dv);
     `APB_ASSIGN(apb,apb_dv)
 
-    apb_fll_if #(
+    apb_to_fll #(
         .APB_ADDR_WIDTH ( APB_ADDR_WIDTH )
     ) i_apb_fll_if (
         .clk_i     ( clk[0]   ),
@@ -66,24 +65,24 @@ module apb_fll_tb #(
         .fll_intf  ( fll_intf )
     );
 
-    gf22_FLL #(
+    gf22_FLL i_gf22_fll (
         // Clock & reset
         .OUTCLK(clk), // FLL clock outputs
         .REFCLK(ref_clk), // Reference clock input
         .RSTB(rst_n),   // Asynchronous reset (active low)
         .CFGREQ(fll_intf.req), // CFG I/F access request (active high)
-        .CFGACK(fll_inft.ack), // CFG I/F access granted (active high)
+        .CFGACK(fll_intf.ack), // CFG I/F access granted (active high)
         .CFGAD(fll_intf.addr),  // CFG I/F address bus
         .CFGD(fll_intf.wdata),   // CFG I/F input data bus (write)
         .CFGQ(fll_intf.rdata),   // CFG I/F output data bus (read)
         .CFGWEB(fll_intf.web), // CFG I/F write enable (active low)
-        .PWD(1'b0),    // Asynchronous power down (active high)
+        .PWD(1'b0),   // Asynchronous power down (active high)
         .RET(1'b0),    // Asynchronous retention/isolation control (active high)
-        .TM(),     // Test mode (active high)
-        .TE(),     // Scan enable (active high)
-        .TD(),     // Scan data input for chain 1:4
+        .TM(1'b0),     // Test mode (active high)
+        .TE(1'b0),     // Scan enable (active high)
+        .TD('0),     // Scan data input for chain 1:4
         .TQ(),     // Scan data output for chain 1:4
-        .JTD(),    // Scan data in 5
+        .JTD(1'b0),    // Scan data in 5
         .JTQ()     // Scan data out 5
         );
 
@@ -105,45 +104,154 @@ module apb_fll_tb #(
     automatic apb_strb_t strb;
     automatic logic      resp;
     automatic bit        w;
+    automatic logic      err;
+    automatic realtime   t0, t1;
+     
 
-    done <= 1'b0;
-
+    strb = '1;
     // reset dut
     @(posedge rst_n);
     apb_master.reset_master();
-    repeat (10) @(posedge clk[0]);
+    repeat (100) @(posedge ref_clk);
 
+    @(posedge clk[0]);
+    t0=$time;
+    @(posedge clk[0]);
+    t1=$time;
+
+    $display("FREQ = %f MHz", (1000/(t1-t0)));
+     
     // Step 0 : set clk[0]
-    data = 'h10030A73;
-    addr = 'hC;
+    addr = 'h1A100010;
     apb_master.read(addr, data, resp);
     $display("Read to addr: %0h. Data: %0h. Resp: %0h", addr,  data, resp);
-    repeat ($urandom_range(0,5)) @(posedge clk[0]);
-    apb_master.write(addr, data, resp);
-    $display("Write to addr: %0h. Data: %0h. Resp: %0h", addr,  data, resp);
-    repeat ($urandom_range(0,5)) @(posedge clk[0]);
+    repeat ($urandom_range(10,15)) @(posedge ref_clk);
 
-    // Step 1
+    addr = 'h1A100010;
+    data = 32'h25C350;
+    apb_master.write(addr, data, strb, resp);
+    $display("Read to addr: %0h. Data: %0h. Resp: %0h", addr,  data, resp);
+    repeat ($urandom_range(10,15)) @(posedge ref_clk);
+     
+    apb_master.read(addr, data, resp);
+    $display("Read to addr: %0h. Data: %0h. Resp: %0h", addr,  data, resp);
+    repeat ($urandom_range(10,15)) @(posedge ref_clk);
+
+    @(posedge clk[0]);
+    t0=$time;
+    @(posedge clk[0]);
+    t1=$time;
+
+    $display("FREQ = %f MHz", (1000/(t1-t0)));
+          
+    addr = 'h1A100030;
+    apb_master.read(addr, data, resp);
+    $display("Read to addr: %0h. Data: %0h. Resp: %0h", addr,  data, resp);
+    repeat ($urandom_range(10,15)) @(posedge ref_clk);
+
+    data = 'h0001;
+    apb_master.write(addr, data, strb, resp);
+    $display("Write to addr: %0h. Data: %0h. Resp: %0h", addr,  data, resp);
+    repeat ($urandom_range(10,15)) @(posedge ref_clk);
+
+    apb_master.read(addr, data, resp);
+    $display("Read to addr: %0h. Data: %0h. Resp: %0h", addr,  data, resp);
+    repeat ($urandom_range(10,15)) @(posedge ref_clk);
+     
+    addr = 'h1A10000C;
+    apb_master.read(addr, data, resp);
+    $display("Read to addr: %0h. Data: %0h. Resp: %0h", addr,  data, resp);
+    repeat ($urandom_range(10,15)) @(posedge ref_clk);
+
+    data = 'h40030A73;
+    apb_master.write(addr, data, strb, resp);
+    $display("Write to addr: %0h. Data: %0h. Resp: %0h", addr,  data, resp);
+    repeat ($urandom_range(10,15)) @(posedge ref_clk);
+     
+    apb_master.read(addr, data, resp);
+    $display("Write to addr: %0h. Data: %0h. Resp: %0h", addr,  data, resp);
+    repeat ($urandom_range(10,15)) @(posedge ref_clk);
+
+
+     @(posedge clk[0]);
+     t0=$time;
+     @(posedge clk[0]);
+     t1=$time;
+
+    $display("FREQ = %f MHz", (1000/(t1-t0)));
+     
+
+    // Read all registers
     for (int unsigned i = TestStartAddr; i < TestEndAddr; i=i+4) begin
       addr = apb_addr_t'(i);
       apb_master.read(addr, data, resp);
       $display("Read to addr: %0h. Data: %0h. Resp: %0h", addr,  data, resp);
-      repeat ($urandom_range(0,5)) @(posedge clk[0]);
+      repeat ($urandom_range(10,15)) @(posedge ref_clk);
     end
 
-    for (int unsigned i = TestStartAddr+'hB; i < TestEndAddr; i=i+4) begin
+    // Set DCOD and MFI for other FLLs 
+    for (int unsigned i = 'h1a100018; i < 'h1a100029; i=i+8) begin
       addr = apb_addr_t'(i);
-      data = 'h10030A73;
-      apb_master.write(addr, data, resp);
+      data = 32'h25C350;
+      apb_master.write(addr, data, strb, resp);
       $display("Write to addr: %0h. Data: %0h. Resp: %0h", addr,  data, resp);
-      repeat ($urandom_range(0,5)) @(posedge clk[0]);
+      repeat ($urandom_range(10,15)) @(posedge ref_clk);
       apb_master.read(addr, data, resp);
       $display("Read to addr: %0h. Data: %0h. Resp: %0h", addr,  data, resp);
-      repeat ($urandom_range(0,5)) @(posedge clk[0]);
+      repeat ($urandom_range(10,15)) @(posedge ref_clk);
     end
 
+    // Set to open loop
+    for (int unsigned i = 'h1a100014; i < 'h1a100025; i=i+8) begin
+      addr = apb_addr_t'(i);
+      data = 'h40060A73;
+      apb_master.write(addr, data, strb, resp);
+      $display("Write to addr: %0h. Data: %0h. Resp: %0h", addr,  data, resp);
+      repeat ($urandom_range(10,15)) @(posedge ref_clk);
+      apb_master.read(addr, data, resp);
+      $display("Read to addr: %0h. Data: %0h. Resp: %0h", addr,  data, resp);
+      repeat ($urandom_range(10,15)) @(posedge ref_clk);
+    end
 
-    done <= 1'b1;
+    addr = 'h1A100030;
+    apb_master.read(addr, data, resp);
+    $display("Read to addr: %0h. Data: %0h. Resp: %0h", addr,  data, resp);
+    repeat ($urandom_range(10,15)) @(posedge ref_clk);
+
+    // Select FLL[i].clk for each clko[i]
+    data = 'h4321;
+    apb_master.write(addr, data, strb, resp);
+    $display("Write to addr: %0h. Data: %0h. Resp: %0h", addr,  data, resp);
+    repeat ($urandom_range(100,150)) @(posedge ref_clk);
+
+    @(posedge clk[0]);
+    t0=$time;
+    @(posedge clk[0]);
+    t1=$time;
+
+    $display("FREQ 1= %f MHz", (1000/(t1-t0)));
+    @(posedge clk[1]);
+    t0=$time;
+    @(posedge clk[1]);
+    t1=$time;
+
+    $display("FREQ 2= %f MHz", (1000/(t1-t0)));
+
+    @(posedge clk[2]);
+    t0=$time;
+    @(posedge clk[2]);
+    t1=$time;
+
+    $display("FREQ 3= %f MHz", (1000/(t1-t0)));
+
+    @(posedge clk[3]);
+    t0=$time;
+    @(posedge clk[3]);
+    t1=$time;
+
+    $display("FREQ 4= %f MHz", (1000/(t1-t0)));     
+    $finish();
+     
   end
 
 endmodule

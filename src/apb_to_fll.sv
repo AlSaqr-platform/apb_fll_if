@@ -17,7 +17,7 @@ module apb_to_fll #(
 )(
     input  logic  clk_i,
     input  logic  rst_ni,
-    APB_BUS.in    apb,
+    APB.Slave     apb,
 
     FLL_BUS.out   fll_intf
 );
@@ -34,9 +34,6 @@ module apb_to_fll #(
     logic fll_ack_sync;
 
     logic fll_valid;
-
-    logic fll_intf_req;
-    logic fll_intf_ack;
 
     assign fll_intf.web   = fll_valid ? ~apb.pwrite    : 1'b1;
     assign fll_intf.addr  = fll_valid ? apb.paddr[5:2] : '0;
