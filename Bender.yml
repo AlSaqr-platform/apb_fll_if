@@ -3,7 +3,7 @@ package:
 
 dependencies:
   apb: { git: "https://github.com/pulp-platform/apb.git", version: 0.2.1 }
-  fll_behav: { git: "git@git.eees.dei.unibo.it:alsaqr-synthesis/fll_behav.git", rev: "9c2133010719524e7285d4eb17e8df9ed47a12ea" }
+  fll_behav: { git: "git@git.eees.dei.unibo.it:alsaqr-synthesis/fll_behav.git", rev: "8c531bc20b93c6d73d9fddbb04b390c05abce8b1" }
 
 sources:
   - src/fll_intf.sv

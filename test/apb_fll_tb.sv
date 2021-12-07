@@ -42,6 +42,7 @@ module apb_fll_tb #(
    logic [3:0]  clk;
    logic rst_n;
    logic ref_clk;
+   integer f1, f2, f3, f4;
    
     APB #(.ADDR_WIDTH(32), .DATA_WIDTH(32)) apb(
                 );
@@ -98,6 +99,56 @@ module apb_fll_tb #(
             #(RTC_CLOCK_PERIOD/2) ref_clk = ~ref_clk;
     end
 
+   
+    initial begin
+       automatic realtime   t0, t1;
+       f1 = $fopen ("f1.txt","w");
+       forever begin
+          @(posedge clk[0]);
+          t0=$time;
+          @(posedge clk[0]);
+          t1=$time;
+   
+          $fwrite(f1,"%f, %f\n", t0, (1000/(t1-t0)));
+       end
+    end   
+    initial begin
+       automatic realtime   t0, t1;
+       f2 = $fopen ("f2.txt","w");
+       forever begin
+          @(posedge clk[1]);
+          t0=$time;
+          @(posedge clk[1]);
+          t1=$time;
+   
+          $fwrite(f2,"%f, %f\n", t0, (1000/(t1-t0)));
+       end
+    end   
+    initial begin
+       automatic realtime   t0, t1;
+       f3 = $fopen ("f3.txt","w");
+       forever begin
+          @(posedge clk[2]);
+          t0=$time;
+          @(posedge clk[2]);
+          t1=$time;
+   
+          $fwrite(f3,"%f, %f\n", t0, (1000/(t1-t0)));
+       end
+    end   
+    initial begin
+       automatic realtime   t0, t1;
+       f4 = $fopen ("f4.txt","w");
+       forever begin
+          @(posedge clk[3]);
+          t0=$time;
+          @(posedge clk[3]);
+          t1=$time;
+   
+          $fwrite(f4,"%f, %f\n", t0, (1000/(t1-t0)));
+       end
+    end   
+   
   initial begin : proc_apb_master
     automatic apb_addr_t addr;
     automatic apb_data_t data;
@@ -112,7 +163,7 @@ module apb_fll_tb #(
     // reset dut
     @(posedge rst_n);
     apb_master.reset_master();
-    repeat (100) @(posedge ref_clk);
+    repeat (50) @(posedge ref_clk);
 
     @(posedge clk[0]);
     t0=$time;
@@ -130,7 +181,7 @@ module apb_fll_tb #(
     addr = 'h1A100010;
     data = 32'h25C350;
     apb_master.write(addr, data, strb, resp);
-    $display("Read to addr: %0h. Data: %0h. Resp: %0h", addr,  data, resp);
+    $display("Write to addr: %0h. Data: %0h. Resp: %0h", addr,  data, resp);
     repeat ($urandom_range(10,15)) @(posedge ref_clk);
      
     apb_master.read(addr, data, resp);
@@ -222,7 +273,7 @@ module apb_fll_tb #(
     data = 'h4321;
     apb_master.write(addr, data, strb, resp);
     $display("Write to addr: %0h. Data: %0h. Resp: %0h", addr,  data, resp);
-    repeat ($urandom_range(100,150)) @(posedge ref_clk);
+    repeat (200) @(posedge ref_clk);
 
     @(posedge clk[0]);
     t0=$time;
